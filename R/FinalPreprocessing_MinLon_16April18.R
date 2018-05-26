@@ -4,7 +4,7 @@ library(MALDIquantForeign)
 library(MALDIrppa)
 
 # load directory + import data + save data
-MINLON_Directory <- ("./rawData/") # change depending on computer/source
+MINLON_Directory <- ("../rawData/") # change depending on computer/source
 MINLON <- importMzXml(MINLON_Directory,verbose = FALSE,centroided = FALSE)
 save(file = paste0(MINLON_Directory, "MINLON.RData"),
      list="MINLON")
