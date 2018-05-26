@@ -1,36 +1,49 @@
 ## Let's consider a function giving Tina all that she wants
 
+# source preprocessed data OR load library (if on slow local machine...)
+source("FinalPreprocessing_MinLon_16April18.R")
+## OR load libraries
+library(MALDIquant)
+library(MALDIquantForeign)
+library(MALDIrppa)
+
 # Arguments:
 # mergeWhitelists = F by default, = T if small group size (not enough discriminating data)
 # mygroup = "species" by default, change to choose which groups you want to compare
 # ID = "sample_ID" by default, but if we compare OTUs we need ID = ID_OTU e.g.
 # folder = "1.species/" default folder for storing plots
 
-TinaSuperFunction <- function(mergeWhitelists = F,
-                              mygroup = "species",
-                              ID = "sample_ID",
-                              folder = "1.species/"){ 
+# TinaSuperFunction <- function(mergeWhitelists = F,
+#                               mygroup = "species",
+#                               ID = "sample_ID",
+#                               folder = "1.species/"){ 
+
+
+mergeWhitelists = F
+mygroup = "species"
+ID = "sample_ID"
+folder = "1.species/"
   
+
+
   #post processing: Only comparison MIN and LON
   #load data
   load("./avgSpectra.RData")
   load("./avgTina.info.RData")
   load("./peaks.RData")
   
-  #load packages
-  library(MALDIquant)
-  library(MALDIquantForeign)
-  library(MALDIrppa)
-  
   # Bin the peaks (make similar peak mass values identical)
   peaks <- binPeaks(peaks)
   
   # Filter the peaks to remove the less frequent ones
+  
+  #### TEST FOR ROBUSTNESS (30, 50, ...) TO DO
+  
   peaks <- filterPeaks(peaks, 
                        minFrequency = c(0.25), # we keep peaks present in at least 25% of the peaks within one group
                        labels = avgTina.info[[mygroup]], ## <-- choose which groups you want to compare ;)
                        mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise, for smaller groups i would choose T
-  #peakPatterns(peaks) #too much for my Grahics device- Set off after this step!
+  peakPatterns(peaks) #too much for my Grahics device- Set off after this step!
   #peakPatterns(peaks[1:10]) 
   #peakPatterns(peaks[11:22])
   
@@ -48,12 +61,17 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   library("pvclust")
   pv <- pvclust (t(featureMatrix),
                  method.hclust="ward.D2",
-                 method.dist="euclidean")
+                 method.dist="euclidean") ## TODO check different methods of distances
   pv[["hclust"]][["labels"]] <- avgTina.info[[ID]]
   
   pdf(file =  paste0("./figures/", folder , "HierClust.pdf"))
   plot(pv, print.num=FALSE, main="Hierarchical Clustering")
   dev.off()
+  
+  
+  ############## <- not checked after this point
+  
+  
   
   ## round mass data
   colnames(featureMatrix) <- sprintf("%.3f", as.double(colnames(featureMatrix)))
@@ -141,7 +159,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   TinaFullAnalysis <- list(pv = pv,
                            result.sim = result.sim)
   return(TinaFullAnalysis)
-}
+#}
 
 resultsTina_species <- TinaSuperFunction()
 resultsTina_species_sex <- TinaSuperFunction(mergeWhitelists = T, mygroup = "species_sex", folder = "2.species_sex/")
