@@ -4,16 +4,14 @@ library(MALDIquantForeign)
 library(MALDIrppa)
 
 # load directory + import data + save data
-MINLON_Directory <- ("../rawData/") # change depending on computer/source
-MINLON <- importMzXml(MINLON_Directory,verbose = FALSE,centroided = FALSE)
-save(file = paste0(MINLON_Directory, "MINLON.RData"),
-     list="MINLON")
+# MINLON_Directory <- ("../rawData/")
+# MINLON <- importMzXml(MINLON_Directory,verbose = FALSE,centroided = FALSE)
+# save(file = paste0(MINLON_Directory, "MINLON.RData"),
+#      list="MINLON")
+
+load(file = "../data/MINLON.RData")
 
 ## Preprocessing
-
-# load data 
-load(paste0(MINLON_Directory, "MINLON.RData"))
-
 sc.results <- screenSpectra(MINLON) #calculate atypicability score
 summary(sc.results) # no atypical spectra! # changes to atypical (#142 after trimming)
 plot(sc.results, labels=T) 
