@@ -18,7 +18,6 @@ library(MALDIrppa)
 #                               ID = "sample_ID",
 #                               folder = "1.species/"){ 
 
-
 mergeWhitelists = F
 mygroup = "species"
 ID = "sample_ID"
@@ -35,21 +34,33 @@ folder = "1.species/"
   # Bin the peaks (make similar peak mass values identical)
   peaks <- binPeaks(peaks)
   
-  # Filter the peaks to remove the less frequent ones
+  # save original peaks, before filtering
+  peaks_beforeFiltering <- peaks
   
-  #### TEST FOR ROBUSTNESS (30, 50, ...) TO DO
+  # get filtered peaks depending on threshold (remove the less frequent ones)
+  getFilteredPeaks <- function(threshold){
+    peaks <- filterPeaks(peaks_beforeFiltering, 
+                         minFrequency = c(threshold), # we keep peaks present in at least 25% of the peaks within one group
+                         labels = avgTina.info[[mygroup]], ## <-- choose which groups you want to compare ;)
+                         mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise, for smaller groups i would choose T
+    return(peaks)
+  }
+    
+  # get peaks lenght vector depending on peaks
+  getPeaksLength <- function(x){
+    myPeaksLength <- 0
+    for (i in 1:length(snrPeaks(x))){
+      myPeaksLength <- c(myPeaksLength, length(snrPeaks(x)[[i]]))
+    }
+    return(myPeaksLength[-1])
+  }
   
-  peaks <- filterPeaks(peaks, 
-                       minFrequency = c(0.25), # we keep peaks present in at least 25% of the peaks within one group
-                       labels = avgTina.info[[mygroup]], ## <-- choose which groups you want to compare ;)
-                       mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise, for smaller groups i would choose T
-  peakPatterns(peaks) #too much for my Grahics device- Set off after this step!
-  #peakPatterns(peaks[1:10]) 
-  #peakPatterns(peaks[11:22])
-  
-  #dev.off()
-  #dev.cur()
-  
+
+
+  lapply(seq(0,1,.1), function(x) {getPeaksLength(getFilteredPeaks(x))})
+
+  peakPatterns(getFilteredPeaks(1), cex.axis = .8) 
+
   # Create featureMatrix and label the rows with the corresponding worms ID
   # featurematrix: gives intensity of peaks at m/z value for each avgspectrum
   featureMatrix <- intensityMatrix(peaks, avgSpectra)
