@@ -6,6 +6,8 @@ source("FinalPreprocessing_MinLon_16April18.R")
 library(MALDIquant)
 library(MALDIquantForeign)
 library(MALDIrppa)
+library(reshape2)
+library(ggplot2)
 
 # Arguments:
 # mergeWhitelists = F by default, = T if small group size (not enough discriminating data)
@@ -55,9 +57,31 @@ folder = "1.species/"
     return(myPeaksLength[-1])
   }
   
+  # Decide on a threshold
+  visualizeThreshold <- function(steps = seq(0,1,.01)){
+    
+    # make a data frame with continuous threshold
+    myDF <- sapply(steps, function(x) {getPeaksLength(getFilteredPeaks(x))})
+    myDF <- data.frame(myDF)
+    myDF <- cbind(sampleID = avgTina.info$sample_ID, myDF)
+    myDF <- melt(myDF)
+    
+    myDF$variable <- factor(myDF$variable,
+                            levels = levels(factor(myDF$variable)),
+                            labels = steps)
+    
+    myplot <- ggplot(myDF, aes(x = variable, y = value)) +
+      geom_line(aes(group = sampleID))+
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    return(list(myDF, myplot))
+  }
+  
+visualizeThreshold()
+  
+## To go from there
 
-
-  lapply(seq(0,1,.1), function(x) {getPeaksLength(getFilteredPeaks(x))})
 
   peakPatterns(getFilteredPeaks(1), cex.axis = .8) 
 
