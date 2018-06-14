@@ -15,18 +15,11 @@ library(ggplot2)
 # ID = "sample_ID" by default, but if we compare OTUs we need ID = ID_OTU e.g.
 # folder = "1.species/" default folder for storing plots
 
-# TinaSuperFunction <- function(mergeWhitelists = F,
-#                               mygroup = "species",
-#                               ID = "sample_ID",
-#                               folder = "1.species/"){ 
-
-mergeWhitelists = F
-mygroup = "species"
-ID = "sample_ID"
-folder = "1.species/"
+TinaSuperFunction <- function(mergeWhitelists = F,
+                              mygroup = "species",
+                              ID = "sample_ID",
+                              folder = "1.species/"){
   
-
-
   #post processing: Only comparison MIN and LON
   #load data
   load("./avgSpectra.RData")
@@ -47,7 +40,7 @@ folder = "1.species/"
                          mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise, for smaller groups i would choose T
     return(peaks)
   }
-    
+  
   # get peaks lenght vector depending on peaks
   getPeaksLength <- function(x){
     myPeaksLength <- 0
@@ -58,41 +51,46 @@ folder = "1.species/"
   }
   
   # Decide on a threshold
-  visualizeThreshold <- function(steps = seq(0,1,.01)){
-    
-    # make a data frame with continuous threshold
-    myDF <- sapply(steps, function(x) {getPeaksLength(getFilteredPeaks(x))})
-    myDF <- data.frame(myDF)
-    myDF <- cbind(sampleID = avgTina.info$sample_ID, myDF)
-    myDF <- melt(myDF)
-    
-    myDF$variable <- factor(myDF$variable,
-                            levels = levels(factor(myDF$variable)),
-                            labels = steps)
-    
-    myplot <- ggplot(myDF, aes(x = variable, y = value)) +
-      geom_line(aes(group = sampleID))+
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      geom_vline(xintercept=26, col = "red")
-    
-    return(list(myDF, myplot))
-  }
-    
-visualizeThreshold()
+  steps = seq(0,1,.01)
+  
+  # make a data frame with continuous threshold
+  myDF <- sapply(steps, function(x) {getPeaksLength(getFilteredPeaks(x))})
+  myDF <- data.frame(myDF)
+  myDF <- cbind(sampleID = avgTina.info$sample_ID, myDF)
+  myDF <- melt(myDF)
+  
+  myDF$variable <- factor(myDF$variable,
+                          levels = levels(factor(myDF$variable)),
+                          labels = steps)
+  # OUTPUT FIGURE 0
+  pdf(file =  paste0("./figures/5.General/", "threshold.pdf"))
+  
+  ggplot(myDF, aes(x = variable, y = value)) +
+    geom_line(aes(group = sampleID))+
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    geom_vline(xintercept=26, col = "red")
+   
+  dev.off()
 
-# Peaks that are shared by 100% (per group) of data --> bio markers
-  peakPatterns(getFilteredPeaks(1), cex.axis = .8) 
+  # OUTPUT FIGURE 1
+  # Peaks that are shared by 100% (per group) of data --> bio markers
+  pdf(file =  paste0("./figures/5.General/" , "peakPatterns100.pdf"))
+  peakPatterns(getFilteredPeaks(1), cex.axis = .8)
+  dev.off()
   
+  # OUTPUT FIGURE 2
   # Peaks that are shared by 25% (per group) of data
-  peakPatterns(getFilteredPeaks(threshold = .25), cex.axis = .8) 
-  
+  pdf(file =  paste0("./figures/5.General/" , "peakPatterns25.pdf"))
+  peakPatterns(getFilteredPeaks(.25), cex.axis = .8)
+  dev.off()
+
   ############## -> we take 25% as a threshold
-  peaks <- getFilteredPeaks(.25)
+  filteredpeaks <- getFilteredPeaks(.25)
   
-# Create featureMatrix and label the rows with the corresponding worms ID
-  # featurematrix: gives intensity of peaks at m/z value for each avgspectrum
-  featureMatrix <- intensityMatrix(peaks, avgSpectra)
+  # Create featureMatrix and label the rows with the corresponding worms ID
+  # featurematrix: gives intensity of filteredpeaks at m/z value for each avgspectrum
+  featureMatrix <- intensityMatrix(filteredpeaks, avgSpectra)
   
   rownames(featureMatrix) <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
   
@@ -112,29 +110,33 @@ visualizeThreshold()
   
   pv[["hclust"]][["labels"]] <- avgTina.info[[ID]]
   
-  # pdf(file =  paste0("./figures/", folder , "HierClust.pdf"))
+  # OUTPUT FIGURE 3
+  # Hierarchical clustering
+  pdf(file =  paste0("./figures/", folder , "HierClust.pdf"))
   plot(pv, print.num=FALSE, main="Hierarchical Clustering")
-  # dev.off()
+  dev.off()
   
   ## round mass data
   colnames(featureMatrix) <- sprintf("%.3f", as.double(colnames(featureMatrix)))
-
+  
   ## Diagonal discriminant analysis
   library(sda)
   Xtrain <- featureMatrix
   Ytrain <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
   ddar <- sda.ranking(Xtrain = featureMatrix, L = Ytrain, fdr = F, diagonal = T)
-
-  # pdf(file =  paste0("./figures/", folder , "Ddar.pdf"))
-  plot(ddar)
-  # dev.off()
+  
+  # OUTPUT FIGURE 4
+  pdf(file =  paste0("./figures/", folder , "Ddar.pdf"))
+  FIG4 <- plot(ddar) # TODO : INCREASE THE SIZE OF LABELS!!!
+  dev.off()
   
   # Linear discriminant Analysis
   ldar <- sda.ranking(Xtrain=featureMatrix, L=Ytrain, fdr=F,diagonal=F)
   
-  # pdf(file =  paste0("./figures/", folder , "Ldar.pdf"))
-  plot(ldar)
-  # dev.off()
+  # OUTPUT FIGURE 5
+  pdf(file =  paste0("./figures/", folder , "Ldar.pdf"))
+  FIG5 <- plot(ldar)
+  dev.off()
   
   #### Variable selection using Cross validation
   library(crossval)
@@ -177,7 +179,7 @@ visualizeThreshold()
                    K=K, B=B, numVars=i, diagonal=T,
                    verbose=F)
     return(cv$stat)})
-
+  
   #estimate accuracy for LDA (diagonal = F)
   set.seed(1234)
   cvsim.lda <- sapply(npeaks, function(i) {
@@ -193,43 +195,42 @@ visualizeThreshold()
                                  "LDA-ACC"=cvsim.lda))
   
   result.sim # shows table with top peaks and probability for discrimination
-
+  
   # Plot linear discriminant Analysis with accuracy values
   
-  labels.lda <- paste0(colnames(featureMatrix)[1:40], " accuracy ", 
-                       as.character(round(result.sim$LDA.ACC[-41] * 100, 1)), "%")
-  length(labels.lda)
+  ## TODO FIX IT
   
-  colnames(featureMatrix)
-  plot(ldar, ylab = 1:410)
-  
-  colnames(featureMatrix) <- as.character(1:417)
-  
-  # dev.off()
-  
-  ?plot.sda.ranking
-  
-  
-  
-  
-  
-  
-  
+  # labels.lda <- paste0(colnames(featureMatrix)[1:40], " accuracy ", 
+  #                      as.character(round(result.sim$LDA.ACC[-41] * 100, 1)), "%")
+  # length(labels.lda)
+  # 
+  # colnames(featureMatrix)
+  # plot(ldar) #, ylab = 1:418)
+  # 
+  # colnames(featureMatrix) <- as.character(1:417)
+  # 
+  # # dev.off()
+  # 
+  # ?plot.sda.ranking
+  # 
   # How to talk a bit (we like to chit chat)
   
   print("Hey Tina, you rule!!")
   
   ## Return a list
   TinaFullAnalysis <- list(pv = pv,
-                           result.sim = result.sim)
+                           result.sim = result.sim,
+                           visualizeThreshold = visualizeThreshold(),
+                           fig1 = FIG1)
   
   return(TinaFullAnalysis)
-#}
-
+}
+ 
 resultsTina_species <- TinaSuperFunction()
-resultsTina_species_sex <- TinaSuperFunction(mergeWhitelists = T, mygroup = "species_sex", folder = "2.species_sex/")
-resultsTina_OTU <- TinaSuperFunction(mergeWhitelists = T, mygroup = "OTU", ID = "ID_OTU", folder = "3.OTU/")
-resultsTina_OUT_sex <- TinaSuperFunction(mergeWhitelists = T, mygroup = "OTU_sex", ID = "ID_OTU", folder = "4.OTU_sex/")
+
+resultsTina_species_sex <- TinaSuperFunction(mygroup = "species_sex", folder = "2.species_sex/")
+resultsTina_OTU <- TinaSuperFunction(mygroup = "OTU", ID = "ID_OTU", folder = "3.OTU/")
+resultsTina_OUT_sex <- TinaSuperFunction(mygroup = "OTU_sex", ID = "ID_OTU", folder = "4.OTU_sex/")
 
 resultsTina_species$result.sim
 resultsTina_species_sex$result.sim
