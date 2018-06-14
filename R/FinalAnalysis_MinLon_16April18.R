@@ -73,23 +73,30 @@ folder = "1.species/"
     myplot <- ggplot(myDF, aes(x = variable, y = value)) +
       geom_line(aes(group = sampleID))+
       theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      geom_vline(xintercept=26, col = "red")
     
     return(list(myDF, myplot))
   }
-  
+    
 visualizeThreshold()
-  
-## To go from there
 
-
+# Peaks that are shared by 100% (per group) of data --> bio markers
   peakPatterns(getFilteredPeaks(1), cex.axis = .8) 
-
-  # Create featureMatrix and label the rows with the corresponding worms ID
+  
+  # Peaks that are shared by 25% (per group) of data
+  peakPatterns(getFilteredPeaks(threshold = .25), cex.axis = .8) 
+  
+  ############## -> we take 25% as a threshold
+  peaks <- getFilteredPeaks(.25)
+  
+# Create featureMatrix and label the rows with the corresponding worms ID
   # featurematrix: gives intensity of peaks at m/z value for each avgspectrum
   featureMatrix <- intensityMatrix(peaks, avgSpectra)
   
   rownames(featureMatrix) <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
+  
+  ## TODOOOOO
   
   ##Clustering: Hierarchical clustering analyis with bootstrapping
   # AU (Approximately Unbiased) p-value and BP (Bootstrap Probability)
@@ -97,16 +104,17 @@ visualizeThreshold()
   pv <- pvclust (t(featureMatrix),
                  method.hclust="ward.D2",
                  method.dist="euclidean") ## TODO check different methods of distances
+  # Ward's method (and centroid, and so called "median" methods) 
+  # are involved in computing geometrical centroids in euclidean space. 
+  # They do it in a way that requires squared euclidean distances (?)
+  # https://stats.stackexchange.com/questions/109597/how-to-choose-the-right-distance-matrix-for-clustering
+  
+  
   pv[["hclust"]][["labels"]] <- avgTina.info[[ID]]
   
-  pdf(file =  paste0("./figures/", folder , "HierClust.pdf"))
+  # pdf(file =  paste0("./figures/", folder , "HierClust.pdf"))
   plot(pv, print.num=FALSE, main="Hierarchical Clustering")
-  dev.off()
-  
-  
-  ############## <- not checked after this point
-  
-  
+  # dev.off()
   
   ## round mass data
   colnames(featureMatrix) <- sprintf("%.3f", as.double(colnames(featureMatrix)))
@@ -117,16 +125,16 @@ visualizeThreshold()
   Ytrain <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
   ddar <- sda.ranking(Xtrain = featureMatrix, L = Ytrain, fdr = F, diagonal = T)
 
-  pdf(file =  paste0("./figures/", folder , "Ddar.pdf"))
+  # pdf(file =  paste0("./figures/", folder , "Ddar.pdf"))
   plot(ddar)
-  dev.off()
+  # dev.off()
   
   # Linear discriminant Analysis
   ldar <- sda.ranking(Xtrain=featureMatrix, L=Ytrain, fdr=F,diagonal=F)
   
-  pdf(file =  paste0("./figures/", folder , "Ldar.pdf"))
+  # pdf(file =  paste0("./figures/", folder , "Ldar.pdf"))
   plot(ldar)
-  dev.off()
+  # dev.off()
   
   #### Variable selection using Cross validation
   library(crossval)
@@ -153,15 +161,15 @@ visualizeThreshold()
   # set.seed to reproductible analysis
   set.seed(1234)
   
-  #for top 10 features (peaks): 
-  cv.dda10 <- crossval(predfun.dda, X=featureMatrix, Y=avgTina.info[[mygroup]], 
-                       K=K, B=B, numVars = 10, diagonal = F, verbose=F)
-  cv.dda10$stat
+  #for top 40 features (peaks): 
+  cv.dda40 <- crossval(predfun.dda, X=featureMatrix, Y=avgTina.info[[mygroup]], 
+                       K=K, B=B, numVars = 40, diagonal = F, verbose=F)
+  cv.dda40$stat
   
-  #look for optimal number of peaks (in the top 20)
-  npeaks <- c(1:20, ncol(featureMatrix))
+  #look for optimal number of peaks (in the top 40)
+  npeaks <- c(1:40, ncol(featureMatrix))
   
-  #estimate accuracy for DDA (diagonal = T)
+  # estimate accuracy for DDA (diagonal = T)
   set.seed(1234)
   cvsim.dda <- sapply(npeaks, function(i) {
     cv <- crossval(predfun.dda, 
@@ -180,12 +188,33 @@ visualizeThreshold()
     return(cv$stat)})
   
   # Combine the results and put them into a table
-  result.sim <-cbind(npeaks=npeaks,
-                     "DDA-ACC"=cvsim.dda,
-                     "LDA-ACC"=cvsim.lda)
+  result.sim <- data.frame(cbind(npeaks=npeaks,
+                                 "DDA-ACC"=cvsim.dda,
+                                 "LDA-ACC"=cvsim.lda))
   
-#  result.sim # shows table with top peaks and probability for discrimination
+  result.sim # shows table with top peaks and probability for discrimination
 
+  # Plot linear discriminant Analysis with accuracy values
+  
+  labels.lda <- paste0(colnames(featureMatrix)[1:40], " accuracy ", 
+                       as.character(round(result.sim$LDA.ACC[-41] * 100, 1)), "%")
+  length(labels.lda)
+  
+  colnames(featureMatrix)
+  plot(ldar, ylab = 1:410)
+  
+  colnames(featureMatrix) <- as.character(1:417)
+  
+  # dev.off()
+  
+  ?plot.sda.ranking
+  
+  
+  
+  
+  
+  
+  
   # How to talk a bit (we like to chit chat)
   
   print("Hey Tina, you rule!!")
@@ -193,6 +222,7 @@ visualizeThreshold()
   ## Return a list
   TinaFullAnalysis <- list(pv = pv,
                            result.sim = result.sim)
+  
   return(TinaFullAnalysis)
 #}
 
