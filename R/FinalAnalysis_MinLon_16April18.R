@@ -119,40 +119,37 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   ## round mass data
   colnames(featureMatrix) <- sprintf("%.3f", as.double(colnames(featureMatrix)))
   
-  ## Diagonal discriminant analysis
   library(sda)
   Xtrain <- featureMatrix
   Ytrain <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
-  ddar <- sda.ranking(Xtrain = featureMatrix, L = Ytrain, fdr = F, diagonal = T)
+
+  # Linear discriminant Analysis
+  ldar <- sda.ranking(Xtrain=featureMatrix, L=Ytrain, fdr=F, diagonal=F)
   
   # OUTPUT FIGURE 4
-  pdf(file =  paste0("./figures/", folder , "Ddar.pdf"))
-  FIG4 <- plot(ddar) # TODO : INCREASE THE SIZE OF LABELS!!!
-  dev.off()
-  
-  # Linear discriminant Analysis
-  ldar <- sda.ranking(Xtrain=featureMatrix, L=Ytrain, fdr=F,diagonal=F)
-  
-  # OUTPUT FIGURE 5
   pdf(file =  paste0("./figures/", folder , "Ldar.pdf"))
-  FIG5 <- plot(ldar)
+  FIG4 <- plot(ldar)
   dev.off()
   
   #### Variable selection using Cross validation
   library(crossval)
   
   # Create a prediction function for the cross validation
-  # to find out , how many and which peaks we need to discriminate
+  # to find out how many and which peaks we need to discriminate
   
-  predfun.dda <- function(Xtrain, Ytrain, Xtest, Ytest, numVars, diagonal=F){
+  predfun <- function(Xtrain, Ytrain, Xtest, Ytest, numVars, diagonal=F){
+    
     #estimate ranking and determine the best numVars variables
     ra <- sda.ranking(Xtrain, Ytrain, verbose=F,diagonal=diagonal,fdr=F)
     selVars <- ra[,'idx'][1:numVars]
+    
     #fit and predict
     sda.out <- sda(Xtrain [,selVars, drop=F],Ytrain, diagonal = diagonal, verbose=F)
-    ynew2 <- predict(sda.out,Xtest[,selVars, drop=F], verbose=F)$class
+    ynew2 <- predict(sda.out, Xtest[,selVars, drop=F], verbose=F)$class
+    
     #compute accuracy
     acc <- mean(Ytest==ynew2)
+
     return(acc)
   }
   
@@ -163,20 +160,44 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   # set.seed to reproductible analysis
   set.seed(1234)
   
-  #for top 40 features (peaks): 
-  cv.dda40 <- crossval(predfun.dda, X=featureMatrix, Y=avgTina.info[[mygroup]], 
-                       K=K, B=B, numVars = 40, diagonal = F, verbose=F)
-  cv.dda40$stat
+  #for top N features (peaks): 
+  cv.lda.fun <- function(numVars){
+    CV <- crossval(predfun, 
+                   X=featureMatrix, 
+                   Y=avgTina.info[[mygroup]], 
+                   K=K, B=B, 
+                   numVars = numVars, 
+                   diagonal = T, 
+                   verbose=F)
+    print(paste0("The accuracy represents the performance of the top ", 
+                 numVars,
+                 " markers (how well they predict the groups)"))
+    print(CV$stat)
+  }
   
-  #look for optimal number of peaks (in the top 40)
+  #for top 1 features (peaks): 
+  cv.lda1 <- cv.lda.fun(1)
+  #for top 10 features (peaks): 
+  cv.lda10 <- cv.lda.fun(10)
+  #for top 20  features (peaks): 
+  cv.lda20 <- cv.lda.fun(20)
+  #for top 30 features (peaks): 
+  cv.lda30 <- cv.lda.fun(30)
+  #for top 40 features (peaks): 
+  cv.lda40 <- cv.lda.fun(40)
+  
+    #look for optimal number of peaks (in the top 40)
   npeaks <- c(1:40, ncol(featureMatrix))
   
   #estimate accuracy for LDA (diagonal = F)
   set.seed(1234)
   cvsim.lda <- sapply(npeaks, function(i) {
-    cv <- crossval(predfun.dda, 
-                   X=featureMatrix, Y=avgTina.info[[mygroup]],
-                   K=K, B=B, numVars=i, diagonal=F,
+    cv <- crossval(predfun, 
+                   X=featureMatrix, 
+                   Y=avgTina.info[[mygroup]],
+                   K=K, B=B, 
+                   numVars=i, 
+                   diagonal=F,
                    verbose=F)
     return(cv$stat)})
   
@@ -216,6 +237,13 @@ TinaSuperFunction <- function(mergeWhitelists = F,
  
 resultsTina_species <- TinaSuperFunction()
 
+ggplot(resultsTina_species$result.sim, aes(x = npeaks, y = LDA.ACC)) +
+  geom_point() +
+  geom_line(col = "red") +
+  # geom_smooth(col = "red", se = F) +
+  geom_vline(xintercept = 40) +
+  theme_bw()
+
 resultsTina_species_sex <- TinaSuperFunction(mygroup = "species_sex", folder = "2.species_sex/")
 resultsTina_OTU <- TinaSuperFunction(mygroup = "OTU", ID = "ID_OTU", folder = "3.OTU/")
 resultsTina_OUT_sex <- TinaSuperFunction(mygroup = "OTU_sex", ID = "ID_OTU", folder = "4.OTU_sex/")
@@ -225,4 +253,4 @@ resultsTina_species_sex$result.sim
 resultsTina_OTU$result.sim
 resultsTina_OUT_sex$result.sim
 
-plot(resultsTina_species$pv)
+plot(resultsTina_OTU$pv, print.num=F)
