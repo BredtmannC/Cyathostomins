@@ -142,7 +142,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   library(crossval)
   
   # Create a prediction function for the cross validation
-  #to find out , how many and which peaks we need to discriminate
+  # to find out , how many and which peaks we need to discriminate
   
   predfun.dda <- function(Xtrain, Ytrain, Xtest, Ytest, numVars, diagonal=F){
     #estimate ranking and determine the best numVars variables
@@ -152,7 +152,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
     sda.out <- sda(Xtrain [,selVars, drop=F],Ytrain, diagonal = diagonal, verbose=F)
     ynew2 <- predict(sda.out,Xtest[,selVars, drop=F], verbose=F)$class
     #compute accuracy
-    acc<- mean(Ytest==ynew2)
+    acc <- mean(Ytest==ynew2)
     return(acc)
   }
   
@@ -171,15 +171,6 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   #look for optimal number of peaks (in the top 40)
   npeaks <- c(1:40, ncol(featureMatrix))
   
-  # estimate accuracy for DDA (diagonal = T)
-  set.seed(1234)
-  cvsim.dda <- sapply(npeaks, function(i) {
-    cv <- crossval(predfun.dda, 
-                   X=featureMatrix, Y=avgTina.info[[mygroup]],
-                   K=K, B=B, numVars=i, diagonal=T,
-                   verbose=F)
-    return(cv$stat)})
-  
   #estimate accuracy for LDA (diagonal = F)
   set.seed(1234)
   cvsim.lda <- sapply(npeaks, function(i) {
@@ -191,7 +182,6 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   
   # Combine the results and put them into a table
   result.sim <- data.frame(cbind(npeaks=npeaks,
-                                 "DDA-ACC"=cvsim.dda,
                                  "LDA-ACC"=cvsim.lda))
   
   result.sim # shows table with top peaks and probability for discrimination
@@ -219,9 +209,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   
   ## Return a list
   TinaFullAnalysis <- list(pv = pv,
-                           result.sim = result.sim,
-                           visualizeThreshold = visualizeThreshold(),
-                           fig1 = FIG1)
+                           result.sim = result.sim)
   
   return(TinaFullAnalysis)
 }
