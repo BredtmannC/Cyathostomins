@@ -37,7 +37,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
     peaks <- filterPeaks(peaks_beforeFiltering, 
                          minFrequency = c(threshold), # we keep peaks present in at least 25% of the peaks within one group
                          labels = avgTina.info[[mygroup]], ## <-- choose which groups you want to compare ;)
-                         mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise, for smaller groups i would choose T
+                         mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise
     return(peaks)
   }
   
@@ -63,7 +63,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
                           levels = levels(factor(myDF$variable)),
                           labels = steps)
   # OUTPUT FIGURE 0
-  pdf(file =  paste0("./figures/5.General/", "threshold.pdf"))
+  pdf(file =  paste0("./figures/" , folder , "threshold.pdf"))
   
   ggplot(myDF, aes(x = variable, y = value)) +
     geom_line(aes(group = sampleID))+
@@ -75,17 +75,17 @@ TinaSuperFunction <- function(mergeWhitelists = F,
 
   # OUTPUT FIGURE 1
   # Peaks that are shared by 100% (per group) of data --> bio markers
-  pdf(file =  paste0("./figures/5.General/" , "peakPatterns100.pdf"))
+  pdf(file =  paste0("./figures/" , folder , "peakPatterns100.pdf")) ##Tina: I changed the folder
   peakPatterns(getFilteredPeaks(1), cex.axis = .8)
   dev.off()
   
   # OUTPUT FIGURE 2
   # Peaks that are shared by 25% (per group) of data
-  pdf(file =  paste0("./figures/5.General/" , "peakPatterns25.pdf"))
+  pdf(file =  paste0("./figures/" , folder , "peakPatterns25.pdf")) ##Tina: I changed the folder
   peakPatterns(getFilteredPeaks(.25), cex.axis = .8)
   dev.off()
 
-  ############## -> we take 25% as a threshold
+  ############## -> we take 25% as a threshold to keep as much information as possible
   filteredpeaks <- getFilteredPeaks(.25)
   
   # Create featureMatrix and label the rows with the corresponding worms ID
@@ -94,7 +94,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   
   rownames(featureMatrix) <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
   
-  ## TODOOOOO
+  ## TODOOOOO <-- lets not change it any more. we should keep the clustering now
   
   ##Clustering: Hierarchical clustering analyis with bootstrapping
   # AU (Approximately Unbiased) p-value and BP (Bootstrap Probability)
@@ -201,7 +201,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
                    verbose=F)
     return(cv$stat)})
   
-  # Combine the results and put them into a table
+  # Put the results into a table
   result.sim <- data.frame(cbind(npeaks=npeaks,
                                  "LDA-ACC"=cvsim.lda))
   
@@ -251,6 +251,6 @@ resultsTina_OUT_sex <- TinaSuperFunction(mygroup = "OTU_sex", ID = "ID_OTU", fol
 resultsTina_species$result.sim
 resultsTina_species_sex$result.sim
 resultsTina_OTU$result.sim
-resultsTina_OUT_sex$result.sim
+resultsTina_OTU_sex$result.sim
 
 plot(resultsTina_OTU$pv, print.num=F)
