@@ -1,7 +1,14 @@
+## Authors: 
+# Christina Bredtmann, 
+# Alice Balard
+
 ## Load libraries and data
 library(MALDIquant)
 library(MALDIquantForeign)
 library(MALDIrppa)
+
+# For quicker loading, we prepared the raw data as a .RData file 
+# ("../data/MINLON.RData"). This file was generated as follow:
 
 # load directory + import data + save data
 # MINLON_Directory <- ("../rawData/")
@@ -13,20 +20,16 @@ load(file = "../data/MINLON.RData")
 
 ## Preprocessing
 sc.results <- screenSpectra(MINLON) #calculate atypicability score
-summary(sc.results) # no atypical spectra! # changes to atypical (#142 after trimming)
+summary(sc.results) # no atypical spectra! 
 plot(sc.results, labels=T) 
 rm(sc.results)
 
-# Some plots of raw data to be happy about ourselves
-
+# Some plots of raw data as examples
 plot(MINLON[[1]])
 plot(MINLON[[46]])
 plot(MINLON[[84]])
 plot(MINLON[[117]])
 plot(MINLON[[142]])
-
-# updating MINLON without faulty spectra - not necessary because no faulty spectra!
-# MINLON <- sc.results$fspectra
 
 # Create informations for our samples
 TinaDF <- data.frame(spectrum_ID =  paste0("spectrum",1:162),
@@ -38,7 +41,7 @@ TinaDF <- data.frame(spectrum_ID =  paste0("spectrum",1:162),
                      OTU_sex = NA, #new
                      ID_OTU = NA) #new
 
-# Horrible nasty regular expression to extract correct names
+# Regular expression to extract correct names
 changeName <- function(x){
   sub('_([^_]*)$', '', sub('_([^_]*)$', '', sub(".*\\\\([^.]*).*", "\\1", gsub("/", "\\\\",x))))
 }
@@ -80,7 +83,7 @@ TinaDF$OTU_sex <- paste0(TinaDF$OTU, "_", TinaDF$sex)
 # Create OTU*ID information:
 TinaDF$ID_OTU <- paste0(TinaDF$sample_ID, "_", TinaDF$OTU)
 
-# Create average Tina info HAHAHA
+# Collect all information in one data frame for average of biological replicates
 avgTina.info <- TinaDF[!duplicated(TinaDF$sample_ID),]
 ##################################################
 
@@ -107,7 +110,7 @@ any(sapply(MINLON, isEmpty))
 all(sapply(MINLON, isRegular)) #ignore, because datapoints are almost evenly distributed
 
 #######
-## Prepocessing:  #TODO find out the best method
+## Prepocessing: 
 
 # http://fmwww.bc.edu/repec/bocode/t/transint.html
 # Square root
@@ -123,7 +126,7 @@ plot(MINLON[[1]]) # no transfo
 plot(transformIntensity(MINLON, method=("sqrt"))[[1]])
 plot(transformIntensity(MINLON, method=("log"))[[1]])
 
-# We go for square root transformation
+# We chose square root transformation
 spectra <- transformIntensity(MINLON, method=("sqrt"))  
 plot(spectra[[1]])
 
@@ -169,17 +172,15 @@ lines(bTopHat4,col=5)
 legend("topright", lwd=1, legend = paste0("halfWindowSize=", c(25,75,150,200)),
        col=c(2,3,4,5))
 
-# Choose which baseline correction is right! SNIP or TopHat?
+# Choose baseline correction : SNIP 
 rm(baseline)
 rm(bTopHat1, bTopHat2, bTopHat3, bTopHat4)
 rm(iterations)
 rm(col)
 
-# Substract baseline for all samples and plot to be happy
+# Substract baseline for all samples and plot
 spectra <- removeBaseline(spectra, method="SNIP",
                           iterations=100)
-
-# or: spectra <- removeBaseline(spectra, method="TopHat")
 
 plot(spectra[[1]])
 plot(spectra[[46]])
@@ -188,14 +189,12 @@ plot(spectra[[117]])
 
 # Normalisation: put all spectra to the same scale
 spectra <- calibrateIntensity(spectra, method="TIC")  ##PQN also possible
-plot(spectra[[1]]) # intensity very low, too low?
+plot(spectra[[1]]) 
 plot(spectra[[46]])
 plot(spectra[[84]])
 plot(spectra[[117]])
 
-# Align spectra: Reference: to which the samples should be aligned?
-# If missing, reference peaks is used. 
-# We don't have reference peaks, so we should give a reference. Maybe sample 1?
+# We use arbitrary sample 1 as a reference spectrum for further alignment
 spectra <- alignSpectra(reference = spectra[[1]],
                         spectra,
                         halfWindowSize=10,
@@ -222,7 +221,6 @@ for (i in seq(along=snrs)){
         col=colSNR[i], lwd=1)}
 legend("topright", legend=snrs, col=colSNR, lwd=1)
 
-# TODO try in different spectra, to check consistency
 plot(avgSpectra[[1]], xlim=c(2000, 20000), ylim=c(0, 0.002))
 for (i in seq(along=snrs)){
   lines(noise[, "mass"],
@@ -230,31 +228,19 @@ for (i in seq(along=snrs)){
         col=colSNR[i], lwd=1)}
 legend("topright", legend=snrs, col=colSNR, lwd=1)
 
-# noise <- estimateNoise(avgSpectra[[1]])
-# plot(avgSpectra[[1]], xlim=c(3000, 6000), ylim=c(0, 0.002))
-# lines(noise, col="red")
-# lines(noise[,1], noise[, 2]*3, col="green")
-# lines(noise[,1], noise[, 2]*2, col="blue")
-
 rm(snrs, colSNR, noise, i)
 
 # Assignment of peaks for all average spectra
 peaks <- detectPeaks(avgSpectra, method="MAD", halfWindowSize=10, SNR=2)
 
-# Plot one example to be happy
+# Plot one example 
 plot(avgSpectra[[1]], xlim=c(4000, 5000), ylim=c(0, 0.002))
 points(peaks[[1]], col="red", pch=4)
 
 plot(avgSpectra[[1]], xlim=c(2000, 20000), ylim=c(0, 0.002))
 points(peaks[[1]], col="red", pch=4)
 
+# Save files to be used in analysis script
 save(file = paste0("./","avgSpectra.RData"), list="avgSpectra")
 save(file = paste0("./","avgTina.info.RData"), list="avgTina.info")
 save(file = paste0("./","peaks.RData"), list="peaks")
-
-
-
-
-
-
-

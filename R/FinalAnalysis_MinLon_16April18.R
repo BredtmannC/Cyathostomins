@@ -1,22 +1,19 @@
-## Let's consider a function giving Tina all that she wants
+## Authors: 
+# Christina Bredtmann, 
+# Alice Balard
 
-# source preprocessed data OR load library (if on slow local machine...)
-source("FinalPreprocessing_MinLon_16April18.R")
-## OR load libraries
-library(MALDIquant)
-library(MALDIquantForeign)
-library(MALDIrppa)
 library(reshape2)
 library(ggplot2)
 
+# source preprocessed data 
+source("FinalPreprocessing_MinLon_16April18.R")
+
 # Arguments:
-# mergeWhitelists = F by default, = T if small group size (not enough discriminating data)
 # mygroup = "species" by default, change to choose which groups you want to compare
 # ID = "sample_ID" by default, but if we compare OTUs we need ID = ID_OTU e.g.
 # folder = "1.species/" default folder for storing plots
 
-TinaSuperFunction <- function(mergeWhitelists = F,
-                              mygroup = "species",
+SuperCyaFun <- function(mygroup = "species",
                               ID = "sample_ID",
                               folder = "1.species/"){
   
@@ -35,9 +32,9 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   # get filtered peaks depending on threshold (remove the less frequent ones)
   getFilteredPeaks <- function(threshold){
     peaks <- filterPeaks(peaks_beforeFiltering, 
-                         minFrequency = c(threshold), # we keep peaks present in at least 25% of the peaks within one group
-                         labels = avgTina.info[[mygroup]], ## <-- choose which groups you want to compare ;)
-                         mergeWhitelists = mergeWhitelists) ##if F filter criteria are applied groupwise
+                         minFrequency = c(threshold), # we keep peaks present in at least e.g. 25% of the peaks within one group
+                         labels = avgTina.info[[mygroup]], ## choose which groups you want to compare
+                         mergeWhitelists = F) ## filter criteria are applied groupwise
     return(peaks)
   }
   
@@ -75,13 +72,13 @@ TinaSuperFunction <- function(mergeWhitelists = F,
 
   # OUTPUT FIGURE 1
   # Peaks that are shared by 100% (per group) of data --> bio markers
-  pdf(file =  paste0("./figures/" , folder , "peakPatterns100.pdf")) ##Tina: I changed the folder
+  pdf(file =  paste0("./figures/" , folder , "peakPatterns100.pdf")) 
   peakPatterns(getFilteredPeaks(1), cex.axis = .8)
   dev.off()
   
   # OUTPUT FIGURE 2
   # Peaks that are shared by 25% (per group) of data
-  pdf(file =  paste0("./figures/" , folder , "peakPatterns25.pdf")) ##Tina: I changed the folder
+  pdf(file =  paste0("./figures/" , folder , "peakPatterns25.pdf")) 
   peakPatterns(getFilteredPeaks(.25), cex.axis = .8)
   dev.off()
 
@@ -94,19 +91,12 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   
   rownames(featureMatrix) <- avgTina.info[[mygroup]] ## <-- choose which groups you want to compare
   
-  ## TODOOOOO <-- lets not change it any more. we should keep the clustering now
-  
   ##Clustering: Hierarchical clustering analyis with bootstrapping
   # AU (Approximately Unbiased) p-value and BP (Bootstrap Probability)
   library("pvclust")
   pv <- pvclust (t(featureMatrix),
                  method.hclust="ward.D2",
-                 method.dist="euclidean") ## TODO check different methods of distances
-  # Ward's method (and centroid, and so called "median" methods) 
-  # are involved in computing geometrical centroids in euclidean space. 
-  # They do it in a way that requires squared euclidean distances (?)
-  # https://stats.stackexchange.com/questions/109597/how-to-choose-the-right-distance-matrix-for-clustering
-  
+                 method.dist="euclidean") 
   
   pv[["hclust"]][["labels"]] <- avgTina.info[[ID]]
   
@@ -209,25 +199,6 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   
   # Plot linear discriminant Analysis with accuracy values
   
-  ## TODO FIX IT
-  
-  # labels.lda <- paste0(colnames(featureMatrix)[1:40], " accuracy ", 
-  #                      as.character(round(result.sim$LDA.ACC[-41] * 100, 1)), "%")
-  # length(labels.lda)
-  # 
-  # colnames(featureMatrix)
-  # plot(ldar) #, ylab = 1:418)
-  # 
-  # colnames(featureMatrix) <- as.character(1:417)
-  # 
-  # # dev.off()
-  # 
-  # ?plot.sda.ranking
-  # 
-  # How to talk a bit (we like to chit chat)
-  
-  print("Hey Tina, you rule!!")
-  
   ## Return a list
   TinaFullAnalysis <- list(pv = pv,
                            result.sim = result.sim)
@@ -235,7 +206,7 @@ TinaSuperFunction <- function(mergeWhitelists = F,
   return(TinaFullAnalysis)
 }
  
-resultsTina_species <- TinaSuperFunction()
+resultsTina_species <- SuperCyaFun()
 
 ggplot(resultsTina_species$result.sim, aes(x = npeaks, y = LDA.ACC)) +
   geom_point() +
@@ -244,9 +215,10 @@ ggplot(resultsTina_species$result.sim, aes(x = npeaks, y = LDA.ACC)) +
   geom_vline(xintercept = 40) +
   theme_bw()
 
-resultsTina_species_sex <- TinaSuperFunction(mygroup = "species_sex", folder = "2.species_sex/")
-resultsTina_OTU <- TinaSuperFunction(mygroup = "OTU", ID = "ID_OTU", folder = "3.OTU/")
-resultsTina_OUT_sex <- TinaSuperFunction(mygroup = "OTU_sex", ID = "ID_OTU", folder = "4.OTU_sex/")
+# Return results according to the different categories
+resultsTina_species_sex <- SuperCyaFun(mygroup = "species_sex", folder = "2.species_sex/")
+resultsTina_OTU <- SuperCyaFun(mygroup = "OTU", ID = "ID_OTU", folder = "3.OTU/")
+resultsTina_OTU_sex <- SuperCyaFun(mygroup = "OTU_sex", ID = "ID_OTU", folder = "4.OTU_sex/")
 
 resultsTina_species$result.sim
 resultsTina_species_sex$result.sim
